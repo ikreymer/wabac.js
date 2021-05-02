@@ -64,6 +64,7 @@ class ArchiveDB {
 
       const urlStore = db.createObjectStore("resources", { keyPath: ["url", "ts"] });
       urlStore.createIndex("pageId", "pageId");
+      //urlStore.createIndex("noRevisits", ["isOriginal", "url", "ts"]);
       //urlStore.createIndex("pageUrlTs", ["pageId", "url", "ts"]);
       //urlStore.createIndex("ts", "ts");
       urlStore.createIndex("mimeStatusUrl", ["mime", "status", "url"]);
