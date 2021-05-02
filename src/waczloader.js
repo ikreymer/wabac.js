@@ -1,7 +1,7 @@
-import yaml from "js-yaml";
-import { csv2jsonAsync } from "json-2-csv";
-import { WARCInfoOnlyWARCLoader, WARCLoader } from "./warcloader";
-import { CDXLoader } from "./cdxloader";
+//import yaml from "js-yaml";
+//import { csv2jsonAsync } from "json-2-csv";
+//import { WARCInfoOnlyWARCLoader, WARCLoader } from "./warcloader";
+//import { CDXLoader } from "./cdxloader";
 
 import { MAX_FULL_DOWNLOAD_SIZE } from "./utils";
 import { ZipRangeReader } from "./ziprangereader";
@@ -21,18 +21,20 @@ export class WACZLoader
     this.canLoadOnDemand = config.onDemand;
 
     this.zipreader = null;
+
+    this.waczname = config.loadUrl;
   }
 
   async load(db, progressUpdate, fullTotalSize) {
     this.zipreader = db.zipreader ? db.zipreader : new ZipRangeReader(this.loader);
 
-    let fullCurrSize = 0;
+    // let fullCurrSize = 0;
 
-    const singleEntryProgressUpdate = (percent, error, currentSize, totalSize, fileHandle = null) => {
-      currentSize = currentSize || 0;
-      //console.log(currentSize, fullCurrSize);
-      progressUpdate(Math.round((fullCurrSize + currentSize) * 100.0 / fullTotalSize), error, fullCurrSize + currentSize, fullTotalSize, fileHandle);
-    };
+    // const singleEntryProgressUpdate = (percent, error, currentSize, totalSize, fileHandle = null) => {
+    //   currentSize = currentSize || 0;
+    //   console.log(currentSize, fullCurrSize);
+    //   progressUpdate(Math.round((fullCurrSize + currentSize) * 100.0 / fullTotalSize), error, fullCurrSize + currentSize, fullTotalSize, fileHandle);
+    // };
 
     const entries = await this.zipreader.load(true);
 
@@ -47,11 +49,12 @@ export class WACZLoader
         db.fullConfig.extra.arrayBuffer = this.loader.arrayBuffer;
       }
 
-      await db.saveZipEntries(entries);
-      db.db.clear("ziplines");
+      //await db.saveZipEntries(entries);
+      //db.db.clear("ziplines");
     }
 
-    const indexloaders = [];
+    await db.addWACZFile(this.waczname, entries);
+
     let metadata;
 
     if (entries["datapackage.json"]) {
@@ -60,66 +63,77 @@ export class WACZLoader
       metadata = await this.loadMetadataYAML(db, entries, "webarchive.yaml");
     }
 
-    for (const filename of Object.keys(entries)) {
-      const entryTotal = this.zipreader.getCompressedSize(filename);
+    if (!this.canLoadOnDemand) {
+      const progressCallback = (offset) => {
+        progressUpdate(Math.round(offset * 100.0 / fullTotalSize), null, offset, fullTotalSize);
+        //progressUpdate(Math.round((fullCurrSize + currentSize) * 100.0 / fullTotalSize), error, fullCurrSize + currentSize, fullTotalSize, fileHandle);
+      };
 
-      if (filename.endsWith(".cdx") || filename.endsWith(".cdxj")) {
-        if (this.canLoadOnDemand) {
-          // For regular cdx
-          console.log("Loading CDX " + filename);
-
-          const reader = await this.zipreader.loadFile(filename);
-          indexloaders.push(new CDXLoader(reader).load(db));
-        }
-
-      } else if (filename.endsWith(".idx")) {
-        if (this.canLoadOnDemand) {
-          // For compressed indices
-          console.log("Loading IDX " + filename);
-
-          indexloaders.push(this.loadZiplinesIndex(db, filename, singleEntryProgressUpdate, entryTotal));
-        }
-
-      } else if (filename.endsWith(".warc.gz") || filename.endsWith(".warc")) {
-
-        // if on-demand loading, and no metadata, load only the warcinfo records to attempt to get metadata
-        if (!metadata && this.canLoadOnDemand) {
-          // for WR metadata at beginning of WARCS
-          const abort = new AbortController();
-          const reader = await this.zipreader.loadFile(filename, {signal: abort.signal, unzip: true});
-          const warcinfoLoader = new WARCInfoOnlyWARCLoader(reader, abort);
-          metadata = await warcinfoLoader.load(db, singleEntryProgressUpdate, entryTotal);
-
-        } else if (!this.canLoadOnDemand) {
-          // otherwise, need to load the full WARCs
-          const reader = await this.zipreader.loadFile(filename, {unzip: true});
-          const warcLoader = new WARCLoader(reader);
-          warcLoader.detectPages = false;
-          const warcMetadata = await warcLoader.load(db, singleEntryProgressUpdate, entryTotal);
-          if (!metadata) {
-            metadata = warcMetadata;
-          }
-        }
-      } else if (filename.endsWith(".jsonl") && filename.startsWith("pages/") && filename !== MAIN_PAGES_JSON && filename !== EXTRA_PAGES_JSON) {
-        await this.loadPagesJSONL(db, filename, false);
-      }
-
-      fullCurrSize += entryTotal;
+      await db.loadWACZ(this.waczname, false, progressCallback);
     }
 
-    await Promise.all(indexloaders);
+    // const indexloaders = [];
+
+    // for (const filename of Object.keys(entries)) {
+    //   const entryTotal = this.zipreader.getCompressedSize(filename);
+
+    //   if (filename.endsWith(".cdx") || filename.endsWith(".cdxj")) {
+    //     if (this.canLoadOnDemand) {
+    //       // For regular cdx
+    //       console.log("Loading CDX " + filename);
+
+    //       const reader = await this.zipreader.loadFile(filename);
+    //       indexloaders.push(new CDXLoader(reader).load(db));
+    //     }
+
+    //   } else if (filename.endsWith(".idx")) {
+    //     if (this.canLoadOnDemand) {
+    //       // For compressed indices
+    //       console.log("Loading IDX " + filename);
+
+    //       indexloaders.push(this.loadZiplinesIndex(db, filename, singleEntryProgressUpdate, entryTotal));
+    //     }
+
+    //   } else if (filename.endsWith(".warc.gz") || filename.endsWith(".warc")) {
+
+    //     // if on-demand loading, and no metadata, load only the warcinfo records to attempt to get metadata
+    //     if (!metadata && this.canLoadOnDemand) {
+    //       // for WR metadata at beginning of WARCS
+    //       const abort = new AbortController();
+    //       const reader = await this.zipreader.loadFile(filename, {signal: abort.signal, unzip: true});
+    //       const warcinfoLoader = new WARCInfoOnlyWARCLoader(reader, abort);
+    //       metadata = await warcinfoLoader.load(db, singleEntryProgressUpdate, entryTotal);
+
+    //     } else if (!this.canLoadOnDemand) {
+    //       // otherwise, need to load the full WARCs
+    //       const reader = await this.zipreader.loadFile(filename, {unzip: true});
+    //       const warcLoader = new WARCLoader(reader);
+    //       warcLoader.detectPages = false;
+    //       const warcMetadata = await warcLoader.load(db, singleEntryProgressUpdate, entryTotal);
+    //       if (!metadata) {
+    //         metadata = warcMetadata;
+    //       }
+    //     }
+    //   } else if (filename.endsWith(".jsonl") && filename.startsWith("pages/") && filename !== MAIN_PAGES_JSON) {
+    //     await this.loadPagesJSONL(filename, false);
+    //   }
+
+    //   fullCurrSize += entryTotal;
+    // }
+
+    // await Promise.all(indexloaders);
     return metadata || {};
   }
 
-  async loadPagesCSV(db, filename) {
-    const csv = await this.loadTextEntry(filename);
+  // async loadPagesCSV(db, filename) {
+  //   const csv = await this.loadTextEntry(filename);
 
-    const pages = await csv2jsonAsync(csv);
+  //   const pages = await csv2jsonAsync(csv);
 
-    if (pages && pages.length) {
-      await db.addPages(pages);
-    }
-  }
+  //   if (pages && pages.length) {
+  //     await db.addPages(pages);
+  //   }
+  // }
 
   async loadTextEntry(db, filename) {
     const reader = await this.zipreader.loadFile(filename);
@@ -141,7 +155,9 @@ export class WACZLoader
 
     // All Pages
     if (entries[MAIN_PAGES_JSON]) {
-      const pageInfo = await this.loadPagesJSONL(db, MAIN_PAGES_JSON);
+      //const pageInfo = await this.loadPagesJSONL(db, MAIN_PAGES_JSON);
+      const pageInfo = await db.loadPages(this.zipreader, this.waczname);
+
       if (pageInfo.hasText) {
         db.textIndex = metadata.textIndex = MAIN_PAGES_JSON;
       }
@@ -154,6 +170,7 @@ export class WACZLoader
     return metadata;
   }
 
+  /*
   async loadPagesJSONL(db, filename, isMainPages = true) {
     const PAGE_BATCH_SIZE = 500;
 
@@ -193,8 +210,9 @@ export class WACZLoader
 
     return pageListInfo;
   }
-
+*/
   // Old WACZ 0.1.0 Format
+  /*
   async loadMetadataYAML(db, entries, filename) {
     const text = await this.loadTextEntry(db, filename);
 
@@ -240,8 +258,9 @@ export class WACZLoader
     }
 
     return metadata;
-  }
+  }*/
 
+  /*
   async loadZiplinesIndex(db, filename, progressUpdate, totalSize) {
     const reader = await this.zipreader.loadFile(filename);
 
@@ -319,4 +338,5 @@ export class WACZLoader
       this.config.useSurt = db.useSurt;
     }
   }
+  */
 }

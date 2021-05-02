@@ -9,7 +9,7 @@ import { BaseParser } from "./baseparser";
 
 // ===========================================================================
 class WARCLoader extends BaseParser {
-  constructor(reader, abort = null, loadId = null) {
+  constructor(reader, abort = null, loadId = null, sourceExtra = null) {
     super();
     
     this.reader = reader;
@@ -26,6 +26,8 @@ class WARCLoader extends BaseParser {
     this.pageMap = {};
     this.pages = [];
     this.lists = [];
+
+    this.source = sourceExtra;
   }
 
   parseWarcInfo(record) {
@@ -302,6 +304,10 @@ class WARCLoader extends BaseParser {
 
     if (pageId) {
       entry.pageId = pageId;
+    }
+
+    if (this.sourceExtra) {
+      entry.source = this.sourceExtra;
     }
 
     return entry;

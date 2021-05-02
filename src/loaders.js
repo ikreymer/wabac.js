@@ -1,9 +1,9 @@
 import { ArchiveDB } from "./archivedb.js";
 import { RemoteSourceArchiveDB, RemotePrefixArchiveDB } from "./remotearchivedb";
-import { WACZRemoteArchiveDB } from "./waczarchive";
+//import { WACZRemoteArchiveDB } from "./waczarchive";
 
-import { HARLoader } from "./harloader";
-import { WBNLoader } from "./wbnloader";
+//import { HARLoader } from "./harloader";
+//import { WBNLoader } from "./wbnloader";
 import { WARCLoader } from "./warcloader";
 import { CDXLoader, CDXFromWARCLoader } from "./cdxloader";
 
@@ -15,7 +15,7 @@ import { deleteDB, openDB } from "idb/with-async-ittr.js";
 import { Canceled, MAX_FULL_DOWNLOAD_SIZE, randomId, AuthNeededError } from "./utils.js";
 import { WACZLoader } from "./waczloader.js";
 
-import { JSONMultiWACZLoader, MultiWACZCollection } from "./multiwacz.js";
+import { JSONMultiWACZLoader, MultiWACZCollection, SingleWACZ } from "./multiwacz.js";
 
 self.interruptLoads = {};
 
@@ -213,7 +213,8 @@ class CollectionLoader
         headers: config.headers,
         extra: config.extra
       });
-      store = new WACZRemoteArchiveDB(config.dbname, sourceLoader, config);
+      //store = new WACZRemoteArchiveDB(config.dbname, sourceLoader, config);
+      store = new SingleWACZ(config, sourceLoader);
       break;
 
     case "remoteproxy":
@@ -512,7 +513,8 @@ Make sure this is a valid URL and you have access to this file.`);
         loader = new WACZLoader(sourceLoader, config, name);
 
         if (config.onDemand) {
-          db = new WACZRemoteArchiveDB(config.dbname, sourceLoader, config);
+          //db = new WACZRemoteArchiveDB(config.dbname, sourceLoader, config);
+          db = new SingleWACZ(config, sourceLoader);
           type = "remotezip";
         } else {
           progressUpdate(0, "Sorry, can't load this WACZ file due to lack of range request support on the server");
@@ -537,15 +539,15 @@ Make sure this is a valid URL and you have access to this file.`);
         type = "remoteprefix";
         db = new RemotePrefixArchiveDB(config.dbname, config.remotePrefix, config.headers, config.noCache);
       
-      } else if (config.sourceName.endsWith(".wbn")) {
-        //todo: fix
-        loader = new WBNLoader(await response.arrayBuffer());
-        config.decode = false;
+      // } else if (config.sourceName.endsWith(".wbn")) {
+      //   //todo: fix
+      //   loader = new WBNLoader(await response.arrayBuffer());
+      //   config.decode = false;
 
-      } else if (config.sourceName.endsWith(".har")) {
-        //todo: fix
-        loader = new HARLoader(await response.json());
-        config.decode = false;
+      // } else if (config.sourceName.endsWith(".har")) {
+      //   //todo: fix
+      //   loader = new HARLoader(await response.json());
+      //   config.decode = false;
       } else if (config.sourceName.endsWith(".json")) {
         db = new MultiWACZCollection(config);
         loader = new JSONMultiWACZLoader(await response.json(), config.loadUrl);
