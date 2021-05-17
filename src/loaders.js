@@ -539,10 +539,10 @@ Make sure this is a valid URL and you have access to this file.`);
         type = "remoteprefix";
         db = new RemotePrefixArchiveDB(config.dbname, config.remotePrefix, config.headers, config.noCache);
       
-      // } else if (config.sourceName.endsWith(".wbn")) {
-      //   //todo: fix
-      //   loader = new WBNLoader(await response.arrayBuffer());
-      //   config.decode = false;
+        // } else if (config.sourceName.endsWith(".wbn")) {
+        //   //todo: fix
+        //   loader = new WBNLoader(await response.arrayBuffer());
+        //   config.decode = false;
 
       // } else if (config.sourceName.endsWith(".har")) {
       //   //todo: fix

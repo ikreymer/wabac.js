@@ -61,6 +61,10 @@ export class WACZArchiveDB extends OnDemandPayloadArchiveDB
     throw new Error("Unimplemented here");
   }
 
+  getWACZName(/*cdx*/) {
+    throw new Error("Unimplemented here");
+  }
+
   async close() {
     super.close();
     caches.delete("cache:" + this.name.slice("db:".length));
@@ -124,7 +128,8 @@ export class WACZArchiveDB extends OnDemandPayloadArchiveDB
   }
 
   async loadRecordFromSource(cdx) {
-    const {wacz, start, length, path} = cdx.source;
+    const {start, length, path} = cdx.source;
+    const wacz = this.getWACZName(cdx);
     const offset = start;
     const unzip = true;
 
@@ -521,6 +526,10 @@ export class MultiWACZCollection extends WACZArchiveDB
     this._updateId = setInterval(() => this.checkUpdates(), this._updatedInterval);
   }
 
+  getWACZName(cdx) {
+    return cdx.source.wacz;
+  }
+
   async checkUpdates() {
     const {response} = await this.indexLoader.doInitialFetch(false);
     if (response.status !== 206 && response.status !== 200) {
@@ -656,7 +665,7 @@ export class SingleWACZ extends WACZArchiveDB
 
       db.createObjectStore("waczfiles", { keyPath: "waczname"} );
 
-      const waczname = this.config.loadUrl;
+      const waczname = this.getWACZName();
 
       for (const line of ziplines) {
         line.waczname = waczname;
@@ -738,7 +747,7 @@ export class SingleWACZ extends WACZArchiveDB
       }
     }
 
-    const waczname = this.config.loadUrl;
+    const waczname = this.getWACZName();
 
     let res = await super.getResource(request, rwPrefix, event, {pageId, waczname});
 
@@ -760,6 +769,10 @@ export class SingleWACZ extends WACZArchiveDB
     }
 
     return null;
+  }
+
+  getWACZName() {
+    return this.config.loadUrl;
   }
 }
 
