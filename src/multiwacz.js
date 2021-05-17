@@ -648,7 +648,7 @@ export class SingleWACZ extends WACZArchiveDB
       const ziplines = await (tx.objectStore("ziplines")).getAll();
       const entries = await (tx.objectStore("zipEntries")).getAll();
       //tx.objectStore("ziplines").name = "oldZipLines";
-      db.deleteObjectStore("oldZipLines");
+      db.deleteObjectStore("ziplines");
 
       db.deleteObjectStore("zipEntries");
 
