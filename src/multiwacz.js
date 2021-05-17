@@ -627,6 +627,50 @@ export class SingleWACZ extends WACZArchiveDB
     }
   }
 
+  _initDB(db, oldV, newV, tx) {
+    super._initDB(db, oldV, newV, tx);
+
+    if (oldV === 2) {
+      this.convertWACZDB(db, tx);
+    }
+  }
+
+  async convertWACZDB(db, tx) {
+    // db.createObjectStore("ziplines", { keyPath: ["waczname", "prefix"] });
+
+    // db.createObjectStore("waczfiles", { keyPath: "waczname"} );
+
+    // db.createObjectStore("ziplines", { keyPath: "prefix" });
+
+    // db.createObjectStore("zipEntries", { keyPath: "filename"});
+    try {
+
+      const ziplines = await (tx.objectStore("ziplines")).getAll();
+      const entries = await (tx.objectStore("zipEntries")).getAll();
+      tx.objectStore("ziplines").name = "oldZipLines";
+
+      db.createObjectStore("ziplines", { keyPath: ["waczname", "prefix"] });
+
+      db.createObjectStore("waczfiles", { keyPath: "waczname"} );
+
+      const waczname = this.config.loadUrl;
+
+      for (const line of ziplines) {
+        line.waczname = waczname;
+        tx.objectStore("ziplines").put(line);
+      }
+
+      const indexType = ziplines.length > 0 ? INDEX_IDX : INDEX_CDX;
+      const filedata = {waczname, entries, indexType};
+
+      tx.objectStore("waczfiles").put(filedata);
+
+      await tx.done;
+    } catch (e)  {
+      console.warn(e);
+    }
+  }
+
   getReaderForWACZ() {
     return this.zipreader;
   }

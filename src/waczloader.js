@@ -1,4 +1,4 @@
-//import yaml from "js-yaml";
+import yaml from "js-yaml";
 //import { csv2jsonAsync } from "json-2-csv";
 //import { WARCInfoOnlyWARCLoader, WARCLoader } from "./warcloader";
 //import { CDXLoader } from "./cdxloader";
@@ -212,7 +212,6 @@ export class WACZLoader
   }
 */
   // Old WACZ 0.1.0 Format
-  /*
   async loadMetadataYAML(db, entries, filename) {
     const text = await this.loadTextEntry(db, filename);
 
@@ -258,7 +257,7 @@ export class WACZLoader
     }
 
     return metadata;
-  }*/
+  }
 
   /*
   async loadZiplinesIndex(db, filename, progressUpdate, totalSize) {

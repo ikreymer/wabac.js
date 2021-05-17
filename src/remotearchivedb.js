@@ -25,8 +25,8 @@ class OnDemandPayloadArchiveDB extends ArchiveDB
     return await loader.load();
   }
 
-  async loadPayload(cdx, depth = 0) {
-    let payload = await super.loadPayload(cdx);
+  async loadPayload(cdx, opts) {
+    let payload = await super.loadPayload(cdx, opts);
     if (payload) {
       if (cdx.respHeaders && cdx.mime !== "warc/revisit") {
         return payload;
@@ -73,14 +73,16 @@ class OnDemandPayloadArchiveDB extends ArchiveDB
 
     // Revisit
     if (remote.origURL) {
-      const origResult = await this.lookupUrl(remote.origURL, remote.origTS, {noRevisits: true});
+      const origResult = await this.lookupUrl(remote.origURL, remote.origTS, {...opts, noRevisits: true});
       if (!origResult) {
         return null;
       }
 
+      const depth = opts && opts.depth || 0;
+
       if (!payload) {
         if (depth < 2) {
-          payload = await this.loadPayload(origResult, depth + 1);
+          payload = await this.loadPayload(origResult, {...opts, depth: depth + 1});
         } else {
           console.warn("Avoiding revisit lookup loop for: " + JSON.stringify(remote));
         }

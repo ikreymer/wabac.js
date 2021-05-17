@@ -22,7 +22,7 @@ class ArchiveDB {
     const { minDedupSize, noRefCounts } = opts;
     this.minDedupSize = Number.isInteger(minDedupSize) ? minDedupSize : 1024;
 
-    this.version = 2;
+    this.version = 3;
 
     this.autoHttpsCheck = true;
     this.useRefCounts = !noRefCounts;
@@ -64,7 +64,6 @@ class ArchiveDB {
 
       const urlStore = db.createObjectStore("resources", { keyPath: ["url", "ts"] });
       urlStore.createIndex("pageId", "pageId");
-      //urlStore.createIndex("noRevisits", ["isOriginal", "url", "ts"]);
       //urlStore.createIndex("pageUrlTs", ["pageId", "url", "ts"]);
       //urlStore.createIndex("ts", "ts");
       urlStore.createIndex("mimeStatusUrl", ["mime", "status", "url"]);
@@ -487,7 +486,7 @@ class ArchiveDB {
     let payload = null;
 
     if (!isNullBodyStatus()) {
-      payload = await this.loadPayload(result);
+      payload = await this.loadPayload(result, opts);
       if (!payload) {
         return null;
       }
@@ -504,7 +503,7 @@ class ArchiveDB {
     return new ArchiveResponse({url, payload, status, statusText, headers, date, extraOpts});
   }
 
-  async loadPayload(result) {
+  async loadPayload(result/*, opts*/) {
     if (result.digest && !result.payload) {
       const payloadRes = await this.db.get("payload", result.digest);
       if (!payloadRes) {
