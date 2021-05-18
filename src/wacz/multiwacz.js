@@ -749,7 +749,7 @@ export class SingleWACZ extends WACZArchiveDB
 
     if (this.fuzzyUrlRules.length) {
       for (const {match, replace} of this.fuzzyUrlRules) {
-        const newUrl = request.url.replace(match, replace);
+        const newUrl = decodeURIComponent(request.url.replace(match, replace));
         if (newUrl && newUrl !== request.url) {
           request.url = newUrl;
           res = await super.getResource(request, rwPrefix, event);
