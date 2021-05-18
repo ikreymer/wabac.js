@@ -1,16 +1,15 @@
 
 import { ZipRangeReader } from "./ziprangereader";
-import { OnDemandPayloadArchiveDB } from "./remotearchivedb";
-import { SingleRecordWARCLoader, WARCLoader } from "./warcloader";
-import { CDXLoader } from "./cdxloader";
-import { tsToDate } from "./utils";
+import { OnDemandPayloadArchiveDB } from "../remotearchivedb";
+import { SingleRecordWARCLoader, WARCLoader } from "../warcloader";
+import { CDXLoader } from "../cdxloader";
+import { tsToDate } from "../utils";
 import { getSurt } from "warcio";
-import { createLoader } from "./blockloaders";
-import { LiveAccess } from "./remoteproxy";
+import { createLoader } from "../blockloaders";
+import { LiveAccess } from "../remoteproxy";
+import { JSONMultiWACZLoader, MAIN_PAGES_JSON } from "./waczloader";
 
 const PAGE_BATCH_SIZE = 500;
-
-const MAIN_PAGES_JSON = "pages/pages.jsonl";
 
 const INDEX_NOT_LOADED = 0;
 const INDEX_CDX = 1;
@@ -93,8 +92,8 @@ export class WACZArchiveDB extends OnDemandPayloadArchiveDB
     this.waczfiles[waczname] = filedata;
   }
 
-  async loadPages(zipreader, waczname) {
-    const reader = await zipreader.loadFile(MAIN_PAGES_JSON, {unzip: true});
+  async loadPages(zipreader, waczname, filename = MAIN_PAGES_JSON) {
+    const reader = await zipreader.loadFile(filename, {unzip: true});
 
     await this.updateEntriesIfNeeded(zipreader, waczname);
 
@@ -564,7 +563,7 @@ export class MultiWACZCollection extends WACZArchiveDB
 
     await this.addWACZFile(waczname, entries);
 
-    await this.loadPages(zipreader, waczname);
+    await this.loadPages(zipreader, waczname, MAIN_PAGES_JSON);
   }
 
   async getResource(request, prefix, event, {pageId} = {}) {
@@ -640,23 +639,16 @@ export class SingleWACZ extends WACZArchiveDB
     super._initDB(db, oldV, newV, tx);
 
     if (oldV === 2) {
-      this.convertWACZDB(db, tx);
+      this.convertV2WACZDB(db, tx);
     }
   }
 
-  async convertWACZDB(db, tx) {
-    // db.createObjectStore("ziplines", { keyPath: ["waczname", "prefix"] });
-
-    // db.createObjectStore("waczfiles", { keyPath: "waczname"} );
-
-    // db.createObjectStore("ziplines", { keyPath: "prefix" });
-
-    // db.createObjectStore("zipEntries", { keyPath: "filename"});
+  async convertV2WACZDB(db, tx) {
     try {
 
       const ziplines = await (tx.objectStore("ziplines")).getAll();
       const entries = await (tx.objectStore("zipEntries")).getAll();
-      //tx.objectStore("ziplines").name = "oldZipLines";
+
       db.deleteObjectStore("ziplines");
 
       db.deleteObjectStore("zipEntries");
@@ -773,34 +765,5 @@ export class SingleWACZ extends WACZArchiveDB
 
   getWACZName() {
     return this.config.loadUrl;
-  }
-}
-
-
-// ==========================================================================
-export class JSONMultiWACZLoader
-{
-  constructor(json, baseUrl) {
-    this.json = json;
-    this.baseUrl = baseUrl;
-  }
-
-  async load(db)  {
-    const metadata = {
-      title: this.json.title,
-      desc: this.json.description
-    };
-
-    const files = this.loadFiles(this.baseUrl);
-
-    await db.syncWACZ(files);
-
-    return metadata;
-  }
-
-  loadFiles() {
-    return this.json.resources.map((res) => {
-      return new URL(res.path, this.baseUrl).href;
-    });
   }
 }

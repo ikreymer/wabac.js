@@ -2,10 +2,13 @@ import { ArchiveDB } from "./archivedb.js";
 import { RemoteSourceArchiveDB, RemotePrefixArchiveDB } from "./remotearchivedb";
 //import { WACZRemoteArchiveDB } from "./waczarchive";
 
-//import { HARLoader } from "./harloader";
+import { HARLoader } from "./harloader";
 //import { WBNLoader } from "./wbnloader";
 import { WARCLoader } from "./warcloader";
 import { CDXLoader, CDXFromWARCLoader } from "./cdxloader";
+
+import { SingleWACZLoader, JSONMultiWACZLoader } from "./wacz/waczloader.js";
+import { MultiWACZCollection, SingleWACZ } from "./wacz/multiwacz.js";
 
 import { createLoader } from "./blockloaders";
 
@@ -13,9 +16,6 @@ import { RemoteWARCProxy, RemoteProxySource, LiveAccess } from "./remoteproxy";
 
 import { deleteDB, openDB } from "idb/with-async-ittr.js";
 import { Canceled, MAX_FULL_DOWNLOAD_SIZE, randomId, AuthNeededError } from "./utils.js";
-import { WACZLoader } from "./waczloader.js";
-
-import { JSONMultiWACZLoader, MultiWACZCollection, SingleWACZ } from "./multiwacz.js";
 
 self.interruptLoads = {};
 
@@ -510,7 +510,7 @@ Make sure this is a valid URL and you have access to this file.`);
       const contentLength = sourceLoader.length;
 
       if (config.sourceName.endsWith(".wacz") || config.sourceName.endsWith(".zip")) {
-        loader = new WACZLoader(sourceLoader, config, name);
+        loader = new SingleWACZLoader(sourceLoader, config, name);
 
         if (config.onDemand) {
           //db = new WACZRemoteArchiveDB(config.dbname, sourceLoader, config);
@@ -544,10 +544,9 @@ Make sure this is a valid URL and you have access to this file.`);
         //   loader = new WBNLoader(await response.arrayBuffer());
         //   config.decode = false;
 
-      // } else if (config.sourceName.endsWith(".har")) {
-      //   //todo: fix
-      //   loader = new HARLoader(await response.json());
-      //   config.decode = false;
+      } else if (config.sourceName.endsWith(".har")) {
+        loader = new HARLoader(await response.json());
+        config.decode = false;
       } else if (config.sourceName.endsWith(".json")) {
         db = new MultiWACZCollection(config);
         loader = new JSONMultiWACZLoader(await response.json(), config.loadUrl);
