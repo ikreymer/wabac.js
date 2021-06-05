@@ -2,7 +2,7 @@
 
 import { Rewriter } from "./rewrite";
 
-import { getTS, getSecondsStr, notFound, AuthNeededError, parseSetCookie } from "./utils.js";
+import { getTS, getSecondsStr, notFound, parseSetCookie, handleAuthNeeded } from "./utils.js";
 
 import { ArchiveResponse } from "./response";
 
@@ -151,21 +151,7 @@ class Collection {
         requestURL = query.url;
       }
     } catch (e) {
-      if (e instanceof AuthNeededError) {
-        //const client = await self.clients.get(event.clientId || event.resultingClientId);
-        const clients = await self.clients.matchAll({ "type": "window" });
-        for (const client of clients) {
-          const url = new URL(client.url);
-          if (url.searchParams.get("source") === this.config.sourceUrl) {
-            client.postMessage({
-              source: this.config.sourceUrl,
-              coll: this.name,
-              type: "authneeded",
-              fileHandle: e.info && e.info.fileHandle,
-            });
-          }
-        } 
-
+      if (handleAuthNeeded(e)) {
         return notFound(request, "<p style=\"margin: auto\">Please wait, this page will reload after authentication...</p>", 401);
       }
     }

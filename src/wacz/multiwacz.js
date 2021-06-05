@@ -3,7 +3,7 @@ import { ZipRangeReader } from "./ziprangereader";
 import { OnDemandPayloadArchiveDB } from "../remotearchivedb";
 import { SingleRecordWARCLoader, WARCLoader } from "../warcloader";
 import { CDXLoader } from "../cdxloader";
-import { tsToDate } from "../utils";
+import { AuthNeededError, tsToDate } from "../utils";
 import { getSurt } from "warcio";
 import { createLoader } from "../blockloaders";
 import { LiveAccess } from "../remoteproxy";
@@ -711,6 +711,28 @@ export class SingleWACZ extends WACZArchiveDB
     const headers = {"Content-Type": "application/ndjson"};
 
     if (!this.textIndex) {
+      return new Response("", {headers});
+    }
+
+    try {
+      await this.zipreader.load();
+    } catch (e) {
+      if (e instanceof AuthNeededError) {
+        //const client = await self.clients.get(event.clientId || event.resultingClientId);
+        const clients = await self.clients.matchAll({ "type": "window" });
+        for (const client of clients) {
+          const url = new URL(client.url);
+          if (url.searchParams.get("source") === this.config.sourceUrl) {
+            client.postMessage({
+              source: this.config.sourceUrl,
+              coll: this.name,
+              type: "authneeded",
+              fileHandle: e.info && e.info.fileHandle,
+            });
+          }
+        } 
+      }
+
       return new Response("", {headers});
     }
 
